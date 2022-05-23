@@ -9,13 +9,58 @@ namespace transport_catalogue {
 
 using namespace std;
 
+// class Stop
+
+Stop::Stop(const string& name, Coordinates coordinates) :
+    Stop(string(name), coordinates)
+{
+    assert(!name.empty());
+}
+
+Stop::Stop(string&& name, Coordinates coordinates) noexcept :
+    name_(move(name)), coordinates_(coordinates)
+{}
+
+const string& Stop::Name() const {
+    return name_;
+}
+
+Coordinates
+Stop::GetCoordinates() const {
+    return coordinates_;
+}
+
+// StopPointerHasher
+
 size_t
-Stop::hash(const Stop& stop) {
-    const size_t prime = 47;
-    size_t hash = std::hash<string>()(stop.name_);
-    hash = prime * hash + std::hash<int>()(stop.GetCoordinates().lat);
-    hash = prime * hash + std::hash<int>()(stop.GetCoordinates().lng);
-    return hash;
+StopPointerHasher::operator () (const Stop *stop) const noexcept {
+    return std::hash<const void*>()(stop);
+}
+
+// PairOfStopsPointersHasher
+
+size_t
+PairOfStopsPointersHasher::operator () (const pair<const Stop*,
+const Stop*> pair_of_stops) const noexcept {
+    std::hash<const void*> hasher;
+    return hasher(pair_of_stops.first) + 47 * hasher(pair_of_stops.second);
+}
+
+// class Bus
+
+const string&
+Bus::Name() const {
+    return name_;
+}
+
+vector<const Stop*>
+Bus::Stops() const {
+    return stops_;
+}
+
+bool
+Bus::Linear() const {
+    return linear_;
 }
 
 size_t
@@ -42,6 +87,20 @@ Bus::GeoLength() const {
             return ComputeDistance(stop1->GetCoordinates(), stop2->GetCoordinates());
         });
     return linear_ ? 2 * distance : distance;
+}
+
+// BusLessByName
+
+bool
+BusLessByName::operator()(const Bus* b1, const Bus* b2) const {
+    return b1->Name() < b2->Name();
+}
+
+// TransportCatalogue
+
+const Stop*
+TransportCatalogue::AddStop(const Stop& stop) {
+    return AddStop(Stop(stop));
 }
 
 const Stop*
@@ -75,6 +134,12 @@ TransportCatalogue::AddBus(Bus&& bus) {
     }
     return &added_bus;
 }
+
+const Bus*
+TransportCatalogue::AddBus(const Bus& bus) {
+    return AddBus(Bus(bus));
+}
+
 
 const Bus*
 TransportCatalogue::GetBus(string_view name) const {

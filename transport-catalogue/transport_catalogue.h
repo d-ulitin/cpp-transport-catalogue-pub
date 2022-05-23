@@ -19,29 +19,11 @@ namespace transport_catalogue {
 
 class Stop {
 public:
-    Stop(const std::string& name, Coordinates coordinates) :
-        Stop(std::string(name), coordinates)
-    {
-        assert(!name.empty());
-    }
+    Stop(const std::string& name, Coordinates coordinates);
+    Stop(std::string&& name, Coordinates coordinates) noexcept;
 
-    Stop(std::string&& name, Coordinates coordinates) noexcept :
-        name_(std::move(name)), coordinates_(coordinates)
-    {}
-
-    static size_t hash(const Stop& stop);
-
-    static size_t hash(const Stop* stop) {
-        return hash(*stop);
-    }
-
-    const std::string& Name() const {
-        return name_;
-    }
-
-    Coordinates GetCoordinates() const {
-        return coordinates_;
-    }
+    const std::string& Name() const;
+    Coordinates GetCoordinates() const;
 
 private:
     std::string name_;
@@ -49,16 +31,11 @@ private:
 };
 
 struct StopPointerHasher {
-    size_t operator () (const Stop *stop) const noexcept {
-        return std::hash<const void*>()(stop);
-    }
+    size_t operator () (const Stop *stop) const noexcept;
 };
 
 struct PairOfStopsPointersHasher {
-    size_t operator () (const std::pair<const Stop*, const Stop*> pair_of_stops) const noexcept {
-        std::hash<const void*> hasher;
-        return hasher(pair_of_stops.first) + 47 * hasher(pair_of_stops.second);
-    }
+    size_t operator () (const std::pair<const Stop*, const Stop*> pair_of_stops) const noexcept;
 };
 
 class Bus {
@@ -71,17 +48,9 @@ public:
     template <typename InputIt>
     Bus(std::string&& name, InputIt stops_first, InputIt stops_last, bool linear);
 
-    const std::string& Name() const {
-        return name_;
-    }
-
-    std::vector<const Stop*> Stops() const {
-        return stops_;
-    }
-
-    bool Linear() const {
-        return linear_;
-    }
+    const std::string& Name() const;
+    std::vector<const Stop*> Stops() const;
+    bool Linear() const;
 
     size_t StopsNumber() const;
 
@@ -97,9 +66,7 @@ private:
 };
 
 struct BusLessByName {
-    bool operator()(const Bus* b1, const Bus* b2) const {
-        return b1->Name() < b2->Name();
-    }
+    bool operator()(const Bus* b1, const Bus* b2) const;
 };
 
 template <typename InputIt>
@@ -121,18 +88,11 @@ class TransportCatalogue {
 public:
 
     const Stop* AddStop(Stop&& stop);
-
-    const Stop* AddStop(const Stop& stop) {
-        return AddStop(Stop(stop));
-    }
+    const Stop* AddStop(const Stop& stop);
     const Stop* GetStop(std::string_view name) const;
 
     const Bus* AddBus(Bus&& bus);
-
-    const Bus* AddBus(const Bus& bus) {
-        return AddBus(Bus(bus));
-    }
-
+    const Bus* AddBus(const Bus& bus);
     const Bus* GetBus(std::string_view name) const;
 
     using BusSet = std::set<const Bus*, BusLessByName>;
