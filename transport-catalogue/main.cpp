@@ -1,20 +1,33 @@
-#include "input_reader.h"
-#include "stat_reader.h"
-#include "transport_catalogue.h"
-
-#include "testing.h"
-
+#include <string>
 #include <iostream>
 
-using namespace std;
+#include "json_reader.h"
+#include "transport_catalogue.h"
+#include "json.h"
+#include "map_renderer.h"
 
 int main() {
-    using namespace transport_catalogue;
+    /*
+     * Примерная структура программы:
+     *
+     * Считать JSON из stdin
+     * Построить на его основе JSON базу данных транспортного справочника
+     * Выполнить запросы к справочнику, находящиеся в массиве "stat_requests", построив JSON-массив
+     * с ответами.
+     * Вывести в stdout ответы в виде JSON
+     */
 
-    testing::TestAll();
+    using namespace std;
 
-    TransportCatalogue tc;
-    io::InputBatch(cin, tc);
-    io::StatBatch(cin, tc, cout);
-    return 0;
+    tcat::db::TransportCatalogue tc;
+    auto document = json::Load(std::cin);
+    tcat::io::JsonRequestReader json_reader(tc);
+    json_reader.ReadBase(document);
+    auto stat = json_reader.ReadStat(document);
+    json::Document stat_document{stat};
+    json::Print(stat_document, std::cout);
+    // tcat::io::MapRendererSettings settings = json_reader.ReadRendererSettings(document);
+    // tcat::io::MapRenderer map_renderer(tc, settings);
+    // svg::Document doc = map_renderer.Render();
+    // doc.Render(std::cout);
 }

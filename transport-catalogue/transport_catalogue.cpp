@@ -5,98 +5,25 @@
 #include <stdexcept>
 #include <numeric>
 
-namespace transport_catalogue {
+namespace tcat::db {
 
+using namespace tcat::domain;
 using namespace std;
 
-// class Stop
+//
+// TransportCatalogue
+//
 
-Stop::Stop(const string& name, Coordinates coordinates) :
-    Stop(string(name), coordinates)
-{
-    assert(!name.empty());
-}
-
-Stop::Stop(string&& name, Coordinates coordinates) noexcept :
-    name_(move(name)), coordinates_(coordinates)
-{}
-
-const string& Stop::Name() const {
-    return name_;
-}
-
-Coordinates
-Stop::GetCoordinates() const {
-    return coordinates_;
-}
-
-// StopPointerHasher
-
-size_t
-StopPointerHasher::operator () (const Stop *stop) const noexcept {
-    return std::hash<const void*>()(stop);
-}
-
-// PairOfStopsPointersHasher
-
-size_t
-PairOfStopsPointersHasher::operator () (const pair<const Stop*,
-const Stop*> pair_of_stops) const noexcept {
-    std::hash<const void*> hasher;
-    return hasher(pair_of_stops.first) + 47 * hasher(pair_of_stops.second);
-}
-
-// class Bus
-
-const string&
-Bus::Name() const {
-    return name_;
-}
-
-vector<const Stop*>
-Bus::Stops() const {
-    return stops_;
-}
-
-bool
-Bus::Linear() const {
-    return linear_;
-}
-
-size_t
-Bus::StopsNumber() const {
-    return linear_ ? stops_.size() * 2 - 1 : stops_.size();
-}
-
-unordered_set<const Stop*, StopPointerHasher>
-Bus::UniqueStops() const {
-    return {stops_.begin(), stops_.end()};
-}
-
-double
-Bus::GeoLength() const {
-    assert(!stops_.empty());
-    if (stops_.size() == 1)
-        return 0;
-    auto distance = std::transform_reduce(
-        next(stops_.begin()), stops_.end(),
-        stops_.begin(),
-        0.0, // must be double or float
-        plus<>{},
-        [](const Stop* stop1, const Stop* stop2) {
-            return ComputeDistance(stop1->GetCoordinates(), stop2->GetCoordinates());
-        });
-    return linear_ ? 2 * distance : distance;
-}
-
-// BusLessByName
-
-bool
-BusLessByName::operator()(const Bus* b1, const Bus* b2) const {
+bool TransportCatalogue::BusLessByName::operator()(const Bus* b1, const Bus* b2) const noexcept {
     return b1->Name() < b2->Name();
 }
 
-// TransportCatalogue
+size_t
+TransportCatalogue::PairOfStopsHasher::operator() (const pair<const Stop*,
+const Stop*> stops) const noexcept {
+    std::hash<const void*> hasher;
+    return hasher(stops.first) + 47 * hasher(stops.second);
+}
 
 const Stop*
 TransportCatalogue::AddStop(const Stop& stop) {
@@ -150,9 +77,9 @@ TransportCatalogue::GetBus(string_view name) const {
         return it->second;
 }
 
-const TransportCatalogue::BusSet&
-TransportCatalogue::GetBusesForStop(const Stop* stop) const{
-    static BusSet empty;
+const TransportCatalogue::Buses&
+TransportCatalogue::GetBuses(const Stop* stop) const{
+    static Buses empty;
     auto it = stop_to_buses_.find(stop);
     if (it == stop_to_buses_.end())
         return empty;
@@ -176,8 +103,10 @@ Distance TransportCatalogue::GetDistance(const Stop* stop1, const Stop* stop2) c
 
 Distance TransportCatalogue::RouteLength(const Bus* bus) const {
     auto stops = bus->Stops();
-    if (stops.empty())
+    if (stops.empty()) {
         throw runtime_error("bus "s + bus->Name() + " has no stops");
+    }
+
     Distance distance = transform_reduce(
         next(stops.begin()), stops.end(),
         stops.begin(),
@@ -187,6 +116,7 @@ Distance TransportCatalogue::RouteLength(const Bus* bus) const {
             return GetDistance(stop2, stop1); // order is important
         }
     );
+
     if (bus->Linear()) {
         // drive in reverse order
         distance += transform_reduce(
@@ -203,4 +133,4 @@ Distance TransportCatalogue::RouteLength(const Bus* bus) const {
 }
 
 
-} // namespace transport_catalogue
+} // namespace tcat::db
