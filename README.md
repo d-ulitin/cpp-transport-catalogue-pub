@@ -3,7 +3,13 @@
 
 # Namespaces
 
-transport_catalogue
-    io
-        detail
-    testing
+External modules:
+- json
+- svg
+
+Transport Catalogue:
+- tcat
+    - DOMAIN: domain, geo
+    - APPLICATION: db
+    - INFRASTRUCTURE: ::tcat, io
+
