@@ -1,4 +1,5 @@
 #include "json_reader.h"
+#include "json_builder.h"
 
 #include <sstream>
 
@@ -174,18 +175,28 @@ JsonRequestReader::BusStat(const json::Node& bus_request) {
         const string& name = map.at("name"s).AsString();
         const Bus *bus = tc_.GetBus(name);
 
-        json::Dict stat;
-        stat.insert({"request_id"s, json::Node{id}});
         if (bus) {
             const auto route_length = tc_.RouteLength(bus);
-            stat.insert({"route_length"s, static_cast<int>(route_length)});
-            stat.insert({"stop_count"s, static_cast<int>(bus->StopsNumber())});
-            stat.insert({"unique_stop_count"s, static_cast<int>(bus->UniqueStops().size())});
-            stat.insert({"curvature"s, static_cast<double>(route_length) / bus->GeoLength()});
+            json::Node node = json::Builder()
+                .StartDict()
+                    .Key("request_id"s).Value({id})
+                    .Key("route_length"s).Value(static_cast<int>(route_length))
+                    .Key("stop_count"s).Value(static_cast<int>(bus->StopsNumber()))
+                    .Key("unique_stop_count"s).Value(static_cast<int>(bus->UniqueStops().size()))
+                    .Key("curvature"s).Value(static_cast<double>(route_length) / bus->GeoLength())
+                .EndDict()
+                .Build();
+            return node;
         } else {
-            stat.insert({"error_message"s, "not found"s});
+            json::Node node = json::Builder()
+                .StartDict()
+                    .Key("request_id"s).Value({id})
+                    .Key("error_message"s).Value("not found"s)
+                .EndDict()
+                .Build();
+            return node;
         }
-        return {stat};
+
     } catch (const out_of_range& e) { // std::map
         throw InputError("bus request error");
     }
@@ -235,19 +246,28 @@ JsonRequestReader::StopStat(const json::Node& stop_request) {
         const string& name = map.at("name"s).AsString();
         const Stop *stop = tc_.GetStop(name);
 
-        json::Dict stat;
-        stat.insert({"request_id"s, json::Node{id}});
         if (stop) {
             const auto& buses = tc_.GetBuses(stop);
             json::Array buses_array;
             for (const auto& bus : buses) {
                 buses_array.emplace_back(bus->Name());
             }
-            stat.insert({"buses"s, json::Node{buses_array}});
+            auto node = json::Builder()
+                .StartDict()
+                    .Key("request_id"s).Value(id)
+                    .Key("buses"s).Value(buses_array)
+                .EndDict()
+                .Build();
+            return node;
         } else {
-            stat.insert({"error_message"s, "not found"s});
+            auto node = json::Builder()
+                .StartDict()
+                    .Key("request_id"s).Value(id)
+                    .Key("error_message"s).Value("not found"s)
+                .EndDict()
+                .Build();
+            return node;
         }
-        return {stat};
     } catch (const out_of_range& e) { // std::map
         throw InputError("stop request error");
     }
@@ -281,10 +301,14 @@ JsonRequestReader::MapStat(const json::Node& map_request, const MapRendererSetti
         ostringstream svg_text;
         svg_doc.Render(svg_text);
 
-        json::Dict map_dict;
-        map_dict.insert({"request_id"s, json::Node{id}});
-        map_dict.insert({"map"s, json::Node{svg_text.str()}});
-        return json::Node{map_dict};
+        auto node = json::Builder()
+            .StartDict()
+                .Key("request_id"s).Value(id)
+                .Key("map"s).Value(svg_text.str())
+            .EndDict()
+            .Build();
+        return node;
+
     } catch (const out_of_range& e) { // std::map
         throw InputError("map request error");
     } catch (const json::ParsingError& e) {

@@ -299,8 +299,11 @@ Node::Node(Dict&& value)
     : value_(move(value)) {
 }
 
-const Node::ValueType&
-Node::GetValue() const {
+Node::ValueType& Node::Value() {
+    return value_;
+}
+
+const Node::ValueType& Node::Value() const {
     return value_;
 }
 
@@ -377,12 +380,12 @@ bool Node::IsArray() const {
     return holds_alternative<Array>(value_);
 }
 
-bool Node::IsMap() const {
+bool Node::IsDict() const {
     return holds_alternative<Dict>(value_);
 }
 
 bool operator==(const Node& v, const Node& w) {
-    return v.GetValue() == w.GetValue();
+    return v.Value() == w.Value();
 }
 
 bool operator!=(const Node& v, const Node& w) {
@@ -506,7 +509,7 @@ void PrintValue(const Dict& value, PrintContext& context) {
 void PrintNode(const Node& node, PrintContext& context) {
     visit(
         [&context](const auto& value) { PrintValue(value, context); },
-        node.GetValue()
+        node.Value()
     );
 }
 

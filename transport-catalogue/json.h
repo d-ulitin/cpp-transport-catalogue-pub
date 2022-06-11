@@ -48,7 +48,8 @@ public:
     Node& operator=(Node&&) noexcept = default;
     ~Node() = default;
 
-    const ValueType& GetValue() const;
+    ValueType& Value();
+    const ValueType& Value() const;
 
     int AsInt() const;
     bool AsBool() const;
@@ -64,14 +65,11 @@ public:
     bool IsString() const;
     bool IsNull() const;
     bool IsArray() const;
-    bool IsMap() const;
+    bool IsDict() const;
 
 private:
     ValueType value_;
 };
-
-static_assert(std::is_copy_constructible<Node>::value);
-static_assert(std::is_move_constructible<Node>::value);
 
 bool operator==(const Node& v, const Node& w);
 
