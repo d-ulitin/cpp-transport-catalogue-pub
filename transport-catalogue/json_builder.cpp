@@ -12,7 +12,11 @@ using namespace std;
 Builder::Builder() {
 }
 
-DictValueContext Builder::Key(string key) {
+DictValueContext Builder::Key(const string& key) {
+    return Key(string(key));
+}
+
+DictValueContext Builder::Key(string&& key) {
     if (nodes_stack_.empty() || !nodes_stack_.back().IsDict())
         throw logic_error("Dict expected");
     assert(!keys_stack_.empty());
@@ -23,7 +27,11 @@ DictValueContext Builder::Key(string key) {
     return DictValueContext(*this);
 }
 
-Builder& Builder::Value(Node value) {
+Builder& Builder::Value(const Node& value) {
+    return Value(Node(value));
+}
+
+Builder& Builder::Value(Node&& value) {
     if (nodes_stack_.empty()) {
         nodes_stack_.push_back(move(value));
     } else {
@@ -89,7 +97,11 @@ DictValueContext::DictValueContext(Builder& builder)
     : builder_(builder) {
 }
 
-DictKeyContext DictValueContext::Value(Node value) {
+DictKeyContext DictValueContext::Value(const Node& value) {
+    return DictKeyContext(builder_.Value(value));
+}
+
+DictKeyContext DictValueContext::Value(Node&& value) {
     return DictKeyContext(builder_.Value(move(value)));
 }
 
@@ -105,7 +117,11 @@ DictKeyContext::DictKeyContext(Builder& builder)
     : builder_(builder) {
 }
 
-DictValueContext DictKeyContext::Key(std::string key) {
+DictValueContext DictKeyContext::Key(const string& key) {
+    return DictValueContext(builder_.Key(key));
+}
+
+DictValueContext DictKeyContext::Key(string&& key) {
     return DictValueContext(builder_.Key(move(key)));
 }
 
@@ -117,7 +133,11 @@ ArrayContext::ArrayContext(Builder& builder)
     : builder_(builder) {
 }
 
-ArrayContext ArrayContext::Value(Node value) {
+ArrayContext ArrayContext::Value(const Node& value) {
+    return ArrayContext(builder_.Value(value));
+}
+
+ArrayContext ArrayContext::Value(Node&& value) {
     return ArrayContext(builder_.Value(move(value)));
 }
 

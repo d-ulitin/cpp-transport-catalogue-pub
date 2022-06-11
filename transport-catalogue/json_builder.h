@@ -18,8 +18,10 @@ class Builder {
 public:
     Builder();
 
-    DictValueContext Key(std::string key);
-    Builder& Value(Node value);
+    DictValueContext Key(const std::string& key); // also can be done by perfect forwarding
+    DictValueContext Key(std::string&& key);
+    Builder& Value(const Node& value);
+    Builder& Value(Node&& value);
     DictKeyContext StartDict();
     Builder& EndDict();
     ArrayContext StartArray();
@@ -36,7 +38,8 @@ private:
 class DictValueContext {
 public:
     DictValueContext(Builder& builder);
-    DictKeyContext Value(Node value);
+    DictKeyContext Value(const Node& value);
+    DictKeyContext Value(Node&& value);
     DictKeyContext StartDict();
     ArrayContext StartArray();
 private:
@@ -46,7 +49,8 @@ private:
 class DictKeyContext {
 public:
     DictKeyContext(Builder& builder);
-    DictValueContext Key(std::string key);
+    DictValueContext Key(const std::string& key);
+    DictValueContext Key(std::string&& key);
     Builder& EndDict();
 private:
     Builder& builder_;
@@ -55,7 +59,8 @@ private:
 class ArrayContext {
 public:
     ArrayContext(Builder& builder);
-    ArrayContext Value(Node value);
+    ArrayContext Value(const Node& value);
+    ArrayContext Value(Node&& value);
     DictKeyContext StartDict();
     ArrayContext StartArray();
     Builder& EndArray();
