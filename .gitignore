@@ -33,3 +33,4 @@
 
 # Auto-generated makefiles
 *.dep
+.vscode
