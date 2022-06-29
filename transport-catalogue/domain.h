@@ -55,7 +55,7 @@ public:
     Bus(std::string&& name, InputIt stops_first, InputIt stops_last, bool linear);
 
     const std::string& Name() const;
-    std::vector<const Stop*> Stops() const;
+    const std::vector<const Stop*>& Stops() const;
     bool Linear() const;
 
     size_t StopsNumber() const;

@@ -180,7 +180,7 @@ JsonRequestReader::BusStat(const json::Node& bus_request) {
             json::Node node = json::Builder()
                 .StartDict()
                     .Key("request_id"s).Value({id})
-                    .Key("route_length"s).Value(static_cast<int>(route_length))
+                    .Key("route_length"s).Value(static_cast<double>(route_length))
                     .Key("stop_count"s).Value(static_cast<int>(bus->StopsNumber()))
                     .Key("unique_stop_count"s).Value(static_cast<int>(bus->UniqueStops().size()))
                     .Key("curvature"s).Value(static_cast<double>(route_length) / bus->GeoLength())
@@ -316,6 +316,140 @@ JsonRequestReader::MapStat(const json::Node& map_request, const MapRendererSetti
     }
 }
 
+/*
+    Запрос маршрута. Словарь:
+
+    "type": "Route"
+    from — остановка, где нужно начать маршрут.
+    to — остановка, где нужно закончить маршрут.
+
+    Пример
+    {
+        "type": "Route",
+        "from": "Biryulyovo Zapadnoye",
+        "to": "Universam",
+        "id": 4
+    }
+
+    Ответ на запрос Route устроен следующим образом:
+    {
+        "request_id": <id запроса>,
+        "total_time": <суммарное время>,
+        "items": [
+            <элементы маршрута>
+        ]
+    }
+
+    total_time — суммарное время в минутах, которое требуется для прохождения маршрута, выведенное
+    в виде вещественного числа.
+
+    items — список элементов маршрута, каждый из которых описывает непрерывную активность
+    пассажира, требующую временных затрат.
+
+    Если маршрута между указанными остановками нет, выведите результат в следующем формате:
+    {
+        "request_id": <id запроса>,
+        "error_message": "not found"
+    }
+
+ */
+json::Node
+JsonRequestReader::RouteStat(const json::Node& route_request, const RoutingSettings& settings) {
+
+    const auto& map = route_request.AsMap();
+
+    try {
+        if (map.at("type"s) != "Route"s)
+            throw InputError("request type isn't Route");
+        const int id = map.at("id"s).AsInt();
+        const Stop *from = tc_.GetStop(map.at("from"s).AsString());
+        const Stop *to = tc_.GetStop(map.at("to"s).AsString());
+
+        if (from && to) {
+            if (!router_) {
+                router_ = make_unique<TransportRouter>(tc_, settings);
+            }
+            auto route = router_->Route(from, to);
+            if (route) {
+                auto node = json::Builder()
+                    .StartDict()
+                        .Key("request_id"s).Value(id)
+                        .Key("total_time"s).Value(route->total_time)
+                        .Key("items"s).Value(RouteActivities(*route))
+                    .EndDict()
+                    .Build();
+                return node;
+            }
+        }
+
+        return json::Builder()
+               .StartDict()
+                   .Key("request_id"s).Value(id)
+                   .Key("error_message"s).Value("not found"s)
+               .EndDict()
+               .Build();
+    } catch (const out_of_range& e) { // std::map
+        throw InputError("stop request error");
+    }}
+
+
+/*
+    Wait — подождать нужное количество минут (в нашем случае всегда bus_wait_time) на указанной
+    остановке
+
+    {
+        "type": "Wait",
+        "stop_name": "Biryulyovo",
+        "time": 6
+    }
+
+    Bus — проехать span_count остановок (перегонов между остановками) на автобусе bus, потратив
+    указанное количество минут:
+    {
+        "type": "Bus",
+        "bus": "297",
+        "span_count": 2,
+        "time": 5.235
+    } 
+
+ */
+json::Node
+JsonRequestReader::RouteActivities(const TransportRouter::RouteResult& route) {
+
+    struct ActivityVisitor {
+        json::Node operator()(const TransportRouter::WaitActivity& activity) const {
+            auto node = json::Builder()
+                .StartDict()
+                    .Key("type"s).Value("Wait"s)
+                    .Key("stop_name"s).Value(activity.stop->Name())
+                    .Key("time"s).Value(activity.time)
+                .EndDict()
+                .Build();
+            return node;
+        }
+
+        json::Node operator()(const TransportRouter::BusActivity& activity) const {
+            auto node = json::Builder()
+                .StartDict()
+                    .Key("type"s).Value("Bus"s)
+                    .Key("bus"s).Value(activity.bus->Name())
+                    .Key("span_count"s).Value(activity.span)
+                    .Key("time").Value(activity.time)
+                .EndDict()
+                .Build();
+            return node;
+        }
+    };
+
+    json::Array items;
+    for (auto & activity : route.activities) {
+        auto node = visit(ActivityVisitor{}, activity);
+        items.push_back(node);
+    }
+    
+    return json::Node(items);
+}
+
 
 /*
     Массив base_requests содержит элементы двух типов: маршруты и остановки. Они перечисляются
@@ -398,6 +532,9 @@ JsonRequestReader::ReadStat(const json::Document& doc) {
             } else if (request_type == "Map") {
                 MapRendererSettings settings = ReadRendererSettings(doc);
                 result.push_back(MapStat(node, settings));
+            } else if (request_type == "Route") {
+                RoutingSettings settings = ReadRoutingSettings(doc);
+                result.push_back(RouteStat(node, settings));
             }
             else {
                 throw InputError("unknown stat request type"s);
@@ -488,5 +625,35 @@ JsonRequestReader::ReadColorPallete(const json::Node& pallete_node) {
     return pallete;
 }
 
+/*
+    ключ routing_settings — словарь с двумя ключами:
+
+    bus_wait_time — время ожидания автобуса на остановке, в минутах.
+    Значение — целое число от 1 до 1000.
+
+    bus_velocity — скорость автобуса, в км/ч. Значение — вещественное число от 1 до 1000.
+
+    Пример:
+    "routing_settings": {
+      "bus_wait_time": 6,
+      "bus_velocity": 40
+    } 
+ */
+RoutingSettings
+JsonRequestReader::ReadRoutingSettings(const json::Document& doc) {
+    try {
+        const json::Node& routing_settings = doc.GetRoot().AsMap().at("routing_settings"s);
+        auto map = routing_settings.AsMap();
+
+        RoutingSettings settings;
+        settings.bus_wait_time = map.at("bus_wait_time").AsInt();
+        settings.bus_velocity = map.at("bus_velocity").AsDouble();
+        return settings;
+    } catch (const out_of_range& e) {
+        throw InputError("failed to read render_settings");
+    } catch (const json::ParsingError& e) {
+        throw InputError("JSON parsing error: "s + e.what());
+    }
+}
 
 } // namespace tcat::io

@@ -105,26 +105,26 @@ svg::Document MapRenderer::Render() {
     // and stop names sorted by lexicographic order
     vector<geo::Coordinates> stops_coords;
     set<string_view> stops;
-    auto get_stop_coordinates =
-        [this, &stops_coords, &stops](const domain::Stop& stop) {
-            if (!tc_.GetBuses(&stop).empty()) {
-                stops_coords.push_back(stop.GetCoordinates());
-                stops.insert(stop.Name());
-            }
-        };
-    tc_.ForEachStop(get_stop_coordinates);
+    auto [stops_begin, stops_end] = tc_.StopsIterators();
+    for (auto stop_it = stops_begin; stop_it != stops_end; ++stop_it) {
+        auto& stop = *stop_it;
+        if (!tc_.GetBuses(&stop).empty()) {
+            stops_coords.push_back(stop.GetCoordinates());
+            stops.insert(stop.Name());
+        }
+    }
 
     SphereProjector projector(stops_coords.begin(), stops_coords.end(),
         settings_.width, settings_.height, settings_.padding);
     
     // get bus names sorted by lexicographic excluding buses with no stops 
     set<string_view> buses;
-    auto get_bus_with_stops =
-        [&buses](const domain::Bus& bus) {
-            if (bus.StopsNumber() > 0)
-                buses.insert(bus.Name());
-        };
-    tc_.ForEachBus(get_bus_with_stops);
+    auto [buses_begin, buses_end] = tc_.BusesIterators();
+    for (auto bus_it = buses_begin; bus_it != buses_end; ++bus_it) {
+        auto& bus = *bus_it;
+        if (bus.StopsNumber() > 0)
+            buses.insert(bus.Name());
+    }
 
     // Карта состоит из четырёх типов объектов. Порядок их вывода в SVG-документ:
     // - ломаные линии маршрутов,

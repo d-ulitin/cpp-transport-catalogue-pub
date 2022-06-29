@@ -42,12 +42,6 @@ public:
     Node(const Dict& map);
     Node(Dict&& map);
 
-    Node(const Node&) noexcept = default;
-    Node(Node&&) noexcept = default;
-    Node& operator=(const Node&) noexcept = default;
-    Node& operator=(Node&&) noexcept = default;
-    ~Node() = default;
-
     ValueType& Value();
     const ValueType& Value() const;
 

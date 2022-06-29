@@ -30,7 +30,7 @@ string_view GetStrokeLineCapText(StrokeLineCap stroke_line_cap) {
     case StrokeLineCap::SQUARE:
         return "square"sv;
     default:
-        assert(false);
+        throw logic_error("unknown StrokeLineCap");
     }
 }
 
@@ -49,7 +49,7 @@ string_view GetStrokeLineJoinText(StrokeLineJoin stroke_line_join) {
     case StrokeLineJoin::ROUND:
         return "round"sv;
     default:
-        assert(false);
+        throw logic_error("unknown StrokeLineJoin");
     }
 }
 

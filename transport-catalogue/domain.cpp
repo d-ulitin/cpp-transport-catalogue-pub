@@ -57,7 +57,7 @@ Bus::Name() const {
     return name_;
 }
 
-vector<const Stop*>
+const vector<const Stop*>&
 Bus::Stops() const {
     return stops_;
 }

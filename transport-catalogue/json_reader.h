@@ -9,9 +9,11 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <memory>
 
 #include "json.h"
 #include "transport_catalogue.h"
+#include "transport_router.h"
 #include "map_renderer.h"
 
 namespace tcat::io {
@@ -31,6 +33,7 @@ public:
     void ReadBase(const json::Document& doc);
     json::Node ReadStat(const json::Document& doc);
     MapRendererSettings ReadRendererSettings(const json::Document& doc);
+    RoutingSettings ReadRoutingSettings(const json::Document& doc);
 
 private:
     using DistancesQueue = std::deque<std::tuple<const Stop*, std::string, Distance>>;
@@ -40,10 +43,13 @@ private:
     json::Node BusStat(const json::Node& bus_request);
     json::Node StopStat(const json::Node& stop_request);
     json::Node MapStat(const json::Node& map_request, const MapRendererSettings& settings);
+    json::Node RouteStat(const json::Node& route_request, const RoutingSettings& settings);
+    json::Node RouteActivities(const TransportRouter::RouteResult& result);
     svg::Color ReadColor(const json::Node& color_node);
     std::vector<svg::Color> ReadColorPallete(const json::Node& pallete_node);
 
     TransportCatalogue& tc_;
+    std::unique_ptr<TransportRouter> router_;
 };
 
 } // namespace tcat::io

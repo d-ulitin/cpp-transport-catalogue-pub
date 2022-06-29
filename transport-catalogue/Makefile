@@ -1,5 +1,7 @@
 CPP := g++
-CPPFLAGS := -c -std=c++17 -Wall -Wextra -Wpedantic -Og -g
+CPPFLAGS := -c -std=c++17 -Wall -Wextra -Wpedantic -Og -g3 -D_GLIBCXX_DEBUG -D_LIBCPP_DEBUG=1
+# CPPFLAGS := -c -std=c++17 -Wall -Wextra -Wpedantic -O2 -DNDEBUG
+# CPPFLAGS := -c -std=c++17 -Wall -Wextra -Wpedantic -O2 -g3 -DNDEBUG # for gproftools
 LD := $(CPP)
 CPPSOURCE := $(wildcard *.cpp)
 CPPHEADERS := $(wildcard *.h)

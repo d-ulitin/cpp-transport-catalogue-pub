@@ -30,18 +30,16 @@ public:
     const Stop* AddStop(const Stop& stop);
     const Stop* GetStop(std::string_view name) const;
 
-    template <typename Func>
-    void ForEachStop(Func f) {
-        std::for_each(stops_.cbegin(), stops_.cend(), f);
+    auto StopsIterators() const {
+        return std::make_pair(stops_.cbegin(), stops_.cend());
     }
 
     const Bus* AddBus(Bus&& bus);
     const Bus* AddBus(const Bus& bus);
     const Bus* GetBus(std::string_view name) const;
 
-    template <typename Func>
-    void ForEachBus(Func f) {
-        std::for_each(buses_.cbegin(), buses_.cend(), f);
+    auto BusesIterators() const {
+        return std::make_pair(buses_.cbegin(), buses_.cend());
     }
 
 private:
