@@ -18,27 +18,30 @@ using namespace std;
 //   r++ -> const X&
 //
 // Iterator must be forward iterator
-template <typename Container, typename Iterator>
+template <typename Container,
+          typename Iterator,
+          typename T = enable_if_t<std::is_base_of_v<forward_iterator_tag,
+              typename std::iterator_traits<Iterator>::iterator_category>>>
 class ForwardAndBackIterator {
 
 public:
 
-    using iterator_category = std::forward_iterator_tag;
     using iterator_type = Iterator;
+
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = typename iterator_traits<iterator_type>::value_type;
+    using difference_type = typename iterator_traits<iterator_type>::difference_type;
+    using pointer = typename iterator_traits<iterator_type>::pointer;
+    using reference = typename iterator_traits<iterator_type>::reference;
+
     using reverse_iterator = typename std::reverse_iterator<Iterator>;
     using const_iterator = typename Container::const_iterator;
-    using value_type = typename iterator_type::value_type;
-    using difference_type = typename iterator_type::difference_type;
-    using pointer = typename iterator_type::pointer;
-    using reference = typename iterator_type::reference;
 
     ForwardAndBackIterator(Container& cont, iterator_type iter)
     : forward_(iter), rbegin_(cont.rbegin()), back_(cont.rbegin()) {}
 
     ForwardAndBackIterator(Container& cont, reverse_iterator iter)
     : forward_(cont.rbegin().base()), rbegin_(cont.rbegin()), back_(prev(iter)) {}
-
-    ForwardAndBackIterator& operator=(const ForwardAndBackIterator& other) = default;
 
     bool operator==(iterator_type i) const {
         return back_ == rbegin_ && forward_ == i;
@@ -97,7 +100,7 @@ public:
     }
 
 private:
-    iterator_type forward_;              // points to current item during forward iterating
+    iterator_type forward_;         // points to current item during forward iterating
     reverse_iterator rbegin_;       // rbegin().base() == end()
     reverse_iterator back_;         // points to _previous_ item during backward iterating
 };
