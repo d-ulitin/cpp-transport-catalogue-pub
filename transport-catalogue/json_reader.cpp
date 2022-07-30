@@ -354,7 +354,7 @@ JsonRequestReader::MapStat(const json::Node& map_request, const MapRendererSetti
 
  */
 json::Node
-JsonRequestReader::RouteStat(const json::Node& route_request, const RoutingSettings& settings) {
+JsonRequestReader::RouteStat(const json::Node& route_request, TransportRouter& router) {
 
     const auto& map = route_request.AsMap();
 
@@ -366,10 +366,7 @@ JsonRequestReader::RouteStat(const json::Node& route_request, const RoutingSetti
         const Stop *to = tc_.GetStop(map.at("to"s).AsString());
 
         if (from && to) {
-            if (!router_) {
-                router_ = make_unique<TransportRouter>(tc_, settings);
-            }
-            auto route = router_->Route(from, to);
+            auto route = router.Route(from, to);
             if (route) {
                 auto node = json::Builder()
                     .StartDict()
@@ -516,7 +513,9 @@ void JsonRequestReader::ReadBase(const json::Document& doc) {
  */
 
 json::Node
-JsonRequestReader::ReadStat(const json::Document& doc) {
+JsonRequestReader::ReadStat(const json::Document& doc,
+                            const MapRendererSettings& render_settings,
+                            TransportRouter& router) {
     try {
         const json::Node& stat_requests = doc.GetRoot().AsMap().at("stat_requests"s);
 
@@ -530,11 +529,9 @@ JsonRequestReader::ReadStat(const json::Document& doc) {
             } else if (request_type == "Stop") {
                 result.push_back(StopStat(node));
             } else if (request_type == "Map") {
-                MapRendererSettings settings = ReadRendererSettings(doc);
-                result.push_back(MapStat(node, settings));
+                result.push_back(MapStat(node, render_settings));
             } else if (request_type == "Route") {
-                RoutingSettings settings = ReadRoutingSettings(doc);
-                result.push_back(RouteStat(node, settings));
+                result.push_back(RouteStat(node, router));
             }
             else {
                 throw InputError("unknown stat request type"s);
@@ -554,24 +551,26 @@ MapRendererSettings
 JsonRequestReader::ReadRendererSettings(const json::Document& doc) {
 
     try {
-        const json::Node& render_settings = doc.GetRoot().AsMap().at("render_settings"s);
-        auto map = render_settings.AsMap();
-
         MapRendererSettings settings;
-        settings.width = map.at("width"s).AsDouble();
-        settings.height = map.at("height"s).AsDouble();
-        settings.padding = map.at("padding"s).AsDouble();
-        settings.line_width = map.at("line_width").AsDouble();
-        settings.stop_radius = map.at("stop_radius").AsDouble();
-        settings.bus_label_font_size = map.at("bus_label_font_size").AsInt();
-        settings.bus_label_offset[0] = map.at("bus_label_offset").AsArray().at(0).AsDouble();
-        settings.bus_label_offset[1] = map.at("bus_label_offset").AsArray().at(1).AsDouble();
-        settings.stop_label_font_size = map.at("stop_label_font_size").AsInt();
-        settings.stop_label_offset[0] = map.at("stop_label_offset").AsArray().at(0).AsDouble();
-        settings.stop_label_offset[1] = map.at("stop_label_offset").AsArray().at(1).AsDouble();
-        settings.underlayer_color = ReadColor(map.at("underlayer_color"));
-        settings.underlayer_width = map.at("underlayer_width").AsDouble();
-        settings.color_palette = ReadColorPallete(map.at("color_palette"));
+        const json::Dict& root_map = doc.GetRoot().AsMap();
+        auto iter = root_map.find("render_settings"s);
+        if (iter != root_map.end()) {
+            auto map = iter->second.AsMap();
+            settings.width = map.at("width"s).AsDouble();
+            settings.height = map.at("height"s).AsDouble();
+            settings.padding = map.at("padding"s).AsDouble();
+            settings.line_width = map.at("line_width").AsDouble();
+            settings.stop_radius = map.at("stop_radius").AsDouble();
+            settings.bus_label_font_size = map.at("bus_label_font_size").AsInt();
+            settings.bus_label_offset[0] = map.at("bus_label_offset").AsArray().at(0).AsDouble();
+            settings.bus_label_offset[1] = map.at("bus_label_offset").AsArray().at(1).AsDouble();
+            settings.stop_label_font_size = map.at("stop_label_font_size").AsInt();
+            settings.stop_label_offset[0] = map.at("stop_label_offset").AsArray().at(0).AsDouble();
+            settings.stop_label_offset[1] = map.at("stop_label_offset").AsArray().at(1).AsDouble();
+            settings.underlayer_color = ReadColor(map.at("underlayer_color"));
+            settings.underlayer_width = map.at("underlayer_width").AsDouble();
+            settings.color_palette = ReadColorPallete(map.at("color_palette"));
+        }
         return settings;
     } catch (const out_of_range& e) {
         throw InputError("failed to read render_settings");
@@ -642,12 +641,14 @@ JsonRequestReader::ReadColorPallete(const json::Node& pallete_node) {
 RoutingSettings
 JsonRequestReader::ReadRoutingSettings(const json::Document& doc) {
     try {
-        const json::Node& routing_settings = doc.GetRoot().AsMap().at("routing_settings"s);
-        auto map = routing_settings.AsMap();
-
         RoutingSettings settings;
-        settings.bus_wait_time = map.at("bus_wait_time").AsInt();
-        settings.bus_velocity = map.at("bus_velocity").AsDouble();
+        const json::Dict& root_map = doc.GetRoot().AsMap();
+        auto iter = root_map.find("routing_settings"s);
+        if (iter != root_map.end()) {
+            auto map = iter->second.AsMap();
+            settings.bus_wait_time = map.at("bus_wait_time").AsInt();
+            settings.bus_velocity = map.at("bus_velocity").AsDouble();
+        }
         return settings;
     } catch (const out_of_range& e) {
         throw InputError("failed to read render_settings");
@@ -655,5 +656,22 @@ JsonRequestReader::ReadRoutingSettings(const json::Document& doc) {
         throw InputError("JSON parsing error: "s + e.what());
     }
 }
+
+serialization::Settings
+JsonRequestReader::ReadSerializationSettings(const json::Document& doc) {
+    try {
+        const json::Node& node = doc.GetRoot().AsMap().at("serialization_settings"s);
+        auto map = node.AsMap();
+
+        serialization::Settings settings;
+        settings.file = map.at("file").AsString();
+        return settings;
+    } catch (const out_of_range& e) {
+        throw InputError("failed to read render_settings");
+    } catch (const json::ParsingError& e) {
+        throw InputError("JSON parsing error: "s + e.what());
+    }
+}
+
 
 } // namespace tcat::io

@@ -108,13 +108,28 @@ private:
 TransportRouter::TransportRouter(const TransportCatalogue& tc, const RoutingSettings& settings)
     : tcat_(tc), settings_(settings) {
     InitializeGraph();
+    assert(graph_);
+    router_ = make_unique<Router>(*graph_);        
+}
+
+TransportRouter::TransportRouter(const TransportCatalogue& tc,
+                                 RoutingSettings&& settings,
+                                 std::unique_ptr<Graph>&& graph,
+                                 std::unique_ptr<Router>&& router,
+                                 StopVertices&& stop_vertices,
+                                 Edges&& edges) :
+    tcat_(tc),
+    settings_(move(settings)),
+    graph_(move(graph)),
+    router_(move(router)),
+    stop_vertices_(move(stop_vertices)),
+    edges_(move(edges)) {
+    // done!
 }
 
 optional<TransportRouter::RouteResult> TransportRouter::Route(const Stop* from, const Stop* to) {
-    if (!router_) {
-        assert(graph_);
-        router_ = make_unique<Router>(*graph_);        
-    }
+    assert(graph_);
+    assert(router_);
     auto route = router_->BuildRoute(GetStopVertex(from),
                                      GetStopVertex(to));
     if (!route.has_value()) {
@@ -194,6 +209,7 @@ Weight bus_velocity) {
         }
     }
 }
+
 
 } // namespace tcat::db
 

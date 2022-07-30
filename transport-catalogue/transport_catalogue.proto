@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package tcat.io.proto;
+
+option optimize_for = LITE_RUNTIME; // for fast linking
+
+// TransportCatalogue
+
+message Coordinates {
+    double lat = 1;
+    double lng = 2;
+}
+
+message Stop {
+    uint64 id = 1; // use pointer as id
+    string name = 2;
+    Coordinates coordinates = 3;
+}
+
+message StopsDistance {
+    uint64 from_stop_id = 1;
+    uint64 to_stop_id = 2;
+    uint32 distance = 3;
+}
+
+message Bus {
+    uint64 id = 1; // use pointer as id
+    string name = 2;
+    repeated uint64 stop_id = 3;
+    enum RouteType {
+        CIRCULAR = 0;
+        LINEAR = 1;
+    }
+    RouteType route_type = 4;
+}
+
+message TransportCatalogue {
+    repeated Stop stop = 1;
+    repeated StopsDistance stops_distance = 2;
+    repeated Bus bus = 3;
+}
+
+// RenderSettings
+
+message Color {
+    message Rgb {
+        uint32 red = 1;
+        uint32 green = 2;
+        uint32 blue = 3;
+    }
+    message Rgba {
+        uint32 red = 1;
+        uint32 green = 2;
+        uint32 blue = 3;
+        double opacity = 4;
+    }
+    oneof color {
+        string str = 1;
+        Rgb rgb = 2;
+        Rgba rgba = 3;
+    }
+}
+
+message RenderSettings {
+    double width = 1;
+    double height = 2;
+    double padding = 3;
+    double line_width = 4;
+    double stop_radius = 5;
+    int32 bus_label_font_size = 6;
+
+    message Offset {
+        double dx = 1;
+        double dy = 2;
+    }
+
+    Offset bus_label_offset = 7;
+    int32 stop_label_font_size = 8;
+    Offset stop_label_offset = 9;
+    Color underlayer_color = 10;
+    double underlayer_width = 11;
+    repeated Color color_palette = 12;
+}
+
+// TransportRouter
+
+message RoutingSettings {
+    int32 bus_wait_time = 1;
+    double bus_velocity = 2;
+}
+
+message Graph {
+    message Edge {
+        uint64 from = 1;   // vertex id
+        uint64 to = 2;     // vertex id
+        double weight = 3;
+    }
+    uint64 vertex_count = 1;
+    repeated Edge edge = 2; // index is edge id
+}
+
+message Router {
+    message RouteInternalData {
+        double weight = 1;
+        repeated uint64 prev_edge = 2; // optional (0 or 1)
+    }
+    message OptionalRouteInternalData {
+        repeated RouteInternalData data = 1; // optional (0 or 1)
+    }
+    message RouteInternalDataRow {
+        repeated OptionalRouteInternalData opt_data = 1; // second dimension
+    }
+    repeated RouteInternalDataRow data_row = 1; // first dimension
+}
+
+message TransportRouter {
+    Graph graph = 1;
+    Router router = 2;
+    repeated uint64 vertex_to_stop_id = 3; // graph vertex id to stop id
+
+    message EdgeData {
+        double wait = 1;
+        uint64 from_stop = 2;
+        uint64 to_stop = 3;
+        int64 span = 4;
+        uint64 bus = 5;
+    }
+
+    repeated EdgeData edge = 4;
+}
+
+// Base (aggregates all above)
+
+message Base {
+    TransportCatalogue transport_catalogue = 1;
+    RenderSettings render_settings = 2;
+    RoutingSettings routing_settings = 3;
+    TransportRouter transport_router = 4;
+}

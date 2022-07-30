@@ -16,10 +16,9 @@ namespace graph {
 
 template <typename Weight>
 class Router {
-private:
+public:
     using Graph = DirectedWeightedGraph<Weight>;
 
-public:
     explicit Router(const Graph& graph);
 
     struct RouteInfo {
@@ -29,13 +28,21 @@ public:
 
     std::optional<RouteInfo> BuildRoute(VertexId from, VertexId to) const;
 
-private:
+    // internal types for (de)serializatioin
     struct RouteInternalData {
         Weight weight;
         std::optional<EdgeId> prev_edge;
     };
     using RoutesInternalData = std::vector<std::vector<std::optional<RouteInternalData>>>;
 
+    // ctor with fileds for deserialization
+    Router(const Graph& graph, RoutesInternalData&& data) :
+        graph_(graph), routes_internal_data_(std::move(data)) {}
+
+    // internal data for serialization
+    const auto& InternalData() const { return routes_internal_data_; }
+
+private:
     void InitializeRoutesInternalData(const Graph& graph) {
         const size_t vertex_count = graph.GetVertexCount();
         for (VertexId vertex = 0; vertex < vertex_count; ++vertex) {

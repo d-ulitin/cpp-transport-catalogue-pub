@@ -34,3 +34,7 @@
 # Auto-generated makefiles
 *.dep
 .vscode
+
+# Build directories
+build*
+Build*

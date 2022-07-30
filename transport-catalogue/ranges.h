@@ -4,6 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 namespace ranges {
 
@@ -16,6 +17,7 @@ public:
         : begin_(begin)
         , end_(end) {
     }
+
     It begin() const {
         return begin_;
     }
@@ -31,6 +33,11 @@ private:
 template <typename C>
 auto AsRange(const C& container) {
     return Range{container.begin(), container.end()};
+}
+
+template <typename It>
+auto AsRange(std::pair<It, It> p) {
+    return Range{p.first, p.second};
 }
 
 }  // namespace ranges

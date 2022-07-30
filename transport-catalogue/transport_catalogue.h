@@ -42,6 +42,10 @@ public:
         return std::make_pair(buses_.cbegin(), buses_.cend());
     }
 
+    auto StopsDistancesIterators() const {
+        return std::make_pair(stops_distances_.cbegin(), stops_distances_.cend());
+    }
+
 private:
     struct BusLessByName {
         bool operator()(const Bus* b1, const Bus* b2) const noexcept;
